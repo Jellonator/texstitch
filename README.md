@@ -3,7 +3,7 @@ Stitch multiple textures together into a single image.
 
 This is a Texture stitching program.
 It's useful for Nintendo 64 repaints.
- 
+
 Commands:
 ```
 stitch new {filename}       Create a new stitch file
