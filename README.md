@@ -20,6 +20,8 @@ If you are repainting the Legend of Zelda: Ocarina of Time / Master Quest for
 the Nintendo Gamecube, then here are a few tips:
  * You need python3 installed and the ability to use the command line to use
 this program.
+ * You will need the Python `pillow` library installed. Install it with
+`pip install pillow`.
  * 64x32 textures can be easily stitched together using the `stitch auto`
 command, since these textures share borders.
 * If using the `stitch auto` command, make sure to only select environment
