@@ -5,10 +5,12 @@ This is a Texture stitching program.
 It's useful for Nintendo 64 repaints.
  
 Commands:
+```
 stitch new {filename}       Create a new stitch file
 stitch auto {filename}      Create a new stitch file automatically
 stitch pack {filename}      Pack multiple images into a single image
 stitch unpack {filename}    Unpack a stitched image into multiple images
+```
  
 Auto stitch creation requires the given textures to have matching edges.
 Any textures given to auto that aren't in the output image will be moved to a
@@ -16,7 +18,6 @@ new folder named 'unused_textures.'
 
 If you are repainting the Legend of Zelda: Ocarina of Time / Master Quest for
 the Nintendo Gamecube, then here are a few tips:
-
  * You need python3 installed and the ability to use the command line to use
 this program.
  * 64x32 textures can be easily stitched together using the `stitch auto`
