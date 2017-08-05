@@ -11,7 +11,7 @@ stitch auto {filename}      Create a new stitch file automatically
 stitch pack {filename}      Pack multiple images into a single image
 stitch unpack {filename}    Unpack a stitched image into multiple images
 ```
- 
+
 Auto stitch creation requires the given textures to have matching edges.
 Any textures given to auto that aren't in the output image will be moved to a
 new folder named 'unused_textures.'
