@@ -5,7 +5,7 @@ import itertools
 
 from PIL import Image
 from tkinter import filedialog as tk_fd
-import stitch
+import util
 
 
 def img_cmp(img1, img2, pos1, pos2, size):
@@ -198,7 +198,7 @@ def pick_files_auto(data, path):
     '''
     # Ask for a bunch of files
     file_path_list = tk_fd.askopenfilenames(
-        filetypes=stitch.VALID_FILES,
+        filetypes=util.FILES_IMG,
         initialdir=path,
         title='Select pictures')
     # Setup nodes

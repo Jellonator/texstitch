@@ -3,6 +3,7 @@ import stitch
 import sys
 import os
 import seams
+import gui
 
 HELP_STRING = """
 This is a Texture stitching program.
@@ -11,6 +12,7 @@ It's useful for Nintendo 64 repaints.
 Commands:
 stitch new {filename}       Create a new stitch file by manually picking files
 stitch newseam {filename}   Create a new stitch file by matching seams
+stitch gui {filename}       Open this program's GUI
 stitch pack {filename}      Pack multiple images into a single image
 stitch unpack {filename}    Unpack a stitched image into multiple images
 
@@ -30,7 +32,8 @@ def stitch_help():
 def main(args):
     base_path = os.getcwd()
     if len(args) < 2:
-        stitch_help()
+        # stitch_help()
+        gui.open_gui(base_path)
     else:
         fname = args[1]
         passed_args = args[2:]
@@ -39,6 +42,8 @@ def main(args):
                               stitch.pick_files_individual)
         elif fname == "newseam":
             stitch.stitch_new(base_path, passed_args, seams.pick_files_auto)
+        elif fname == "gui":
+            gui.open_gui(base_path)
         elif fname == "pack":
             stitch.stitch_pack(base_path, passed_args)
         elif fname == "unpack":
