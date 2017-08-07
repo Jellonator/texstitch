@@ -4,7 +4,6 @@ import json
 import math
 import util
 from PIL import Image
-from tkinter import filedialog as tk_fd
 
 
 class StitchData:
@@ -59,12 +58,14 @@ class StitchData:
     def get_dir(self):
         return os.path.dirname(self.path)
 
-    def export_to_json(self, fname):
+    def export_to_json(self):
         '''
         Export this StitchData to a json file
 
         fname - name of file to export to
         '''
+        if self.path == "":
+            return False
         path = self.get_dir()
         data = {
             "width": self.width,
@@ -73,8 +74,9 @@ class StitchData:
             "files": [os.path.relpath(name, path) for name in self.texlist],
             "out": os.path.relpath(self.output, path)
         }
-        with open(fname, 'w') as fh:
+        with open(self.path, 'w') as fh:
             fh.write(json.dumps(data, indent=4, sort_keys=True))
+        return True
 
     def import_from_json(fname):
         '''
@@ -91,9 +93,10 @@ class StitchData:
             sdata.tex_width = jdata["tex_width"]
             sdata.tex_height = jdata["tex_height"]
             sdata.texlist = [
-                os.path.join(path, name) for name in jdata["files"]
+                os.path.abspath(os.path.join(path, name))
+                for name in jdata["files"]
             ]
-            sdata.output = os.path.join(path, jdata["out"])
+            sdata.output = os.path.abspath(os.path.join(path, jdata["out"]))
         return sdata
 
 
@@ -110,7 +113,7 @@ def pick_files_individual(data, path):
         "How many textures wide should the output be? ")
     print("Input a list of textures from top to bottom: ")
     while True:
-        file_path = tk_fd.askopenfilename(
+        file_path = util.get_in_filename(
             initialdir=path,
             title="Select an image",
             filetypes=util.FILES_IMG)
@@ -135,14 +138,15 @@ def stitch_new(path, args, pickf=pick_files_individual):
     path = os.path.dirname(outfile)
     # Create data
     data = StitchData()
-    data.output = tk_fd.asksaveasfilename(
+    data.path = os.path.abspath(outfile)
+    data.output = util.get_out_filename(
         initialdir=path,
         title="Output should be saved as:",
         filetypes=util.FILES_IMG)
     # Get files
     pickf(data, path)
     # Output
-    data.export_to_json(outfile)
+    data.export_to_json()
     print("Created file.")
 
 

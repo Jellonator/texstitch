@@ -1,29 +1,11 @@
 # import os
 import util
-import stitch
+# import stitch
 import tkinter as tk
-from tkinter import filedialog as tk_fd
 from tkinter import ttk
+from tkinter import messagebox as mbox
 
-
-def get_out_filename(initialdir, title, filetypes):
-    value = None
-    while value is None or value == "" or value == ():
-        value = tk_fd.asksaveasfilename(
-            initialdir=initialdir,
-            title=title,
-            filetypes=filetypes)
-        print(value)
-
-
-def get_many_files(initialdir, title, filetypes):
-    value = None
-    while value is None or len(value) == 0:
-        value = tk_fd.askopenfilenames(
-            initialdir=initialdir,
-            title=title,
-            filetypes=filetypes)
-        print(value)
+from gui import newstitchfile
 
 
 class StitchGui(ttk.Frame):
@@ -32,8 +14,8 @@ class StitchGui(ttk.Frame):
     updated = False
     img = None
 
-    def __init__(self, default_path):
-        super().__init__()
+    def __init__(self, root, default_path):
+        super().__init__(root)
         self.default_path = default_path
         self.f_init_ui()
 
@@ -50,27 +32,17 @@ class StitchGui(ttk.Frame):
 
     def check_data_path(self):
         if self.data.path == "":
-            self.data.path = get_out_filename(
+            self.data.path = util.get_out_filename(
                 initialdir=self.default_path,
                 title="Json data save path",
                 filetypes=util.FILES_STITCH)
 
-    def check_output_path(self):
-        if self.data.output == "":
-            self.data.output = get_out_filename(
-                initialdir=self.default_path,
-                title="Output image name",
-                filetypes=util.FILES_IMG)
-
     def f_stitch_new(self):
-        file_path_list = get_many_files(
-            filetypes=util.FILES_IMG,
-            initialdir=self.default_path,
-            title='Select textures')
-
-        data = stitch.StitchData()
-        for fname in file_path_list:
-            data.texlist.append(fname)
+        if self.check_save(should_alert=True):
+            return
+        data = newstitchfile.create_new_file(self.master, self.default_path)
+        if data is not None:
+            print("Got data!")
 
     def f_stitch_save_as(self):
         pass
@@ -99,6 +71,12 @@ class StitchGui(ttk.Frame):
     def f_export_whole(self):
         pass
 
+    def f_move_up(self):
+        pass
+
+    def f_move_down(self):
+        pass
+
     def f_init_ui(self):
         self.style = ttk.Style()
         self.style.theme_use("default")
@@ -106,7 +84,7 @@ class StitchGui(ttk.Frame):
         self.pack(fill=tk.BOTH, expand=True)
 
         buttonframe = ttk.Frame(self, relief=tk.RAISED, borderwidth=1)
-        buttonframe.pack(fill=tk.X, side=tk.TOP)
+        buttonframe.pack(fill=tk.Y, side=tk.LEFT)
         # self.pack(fill=tk.BOTH, expand=1)
 
         menu_root = tk.Menu(self.master)
@@ -135,15 +113,21 @@ class StitchGui(ttk.Frame):
                                 command=self.f_export_whole)
         menu_root.add_cascade(label="Export", menu=menu_export)
 
-        # button_new = ttk.Button(
-        #     buttonframe,
-        #     text="new",
-        #     command=self.f_stitch_new)
-        # button_new.pack(side=tk.LEFT, padx=5, pady=5)
+        button_move_up = ttk.Button(
+            buttonframe,
+            image=util.load_icon('icon/up.png'),
+            command=self.f_move_up)
+        button_move_up.pack(side=tk.TOP, padx=5, pady=5)
+
+        button_move_down = ttk.Button(
+            buttonframe,
+            image=util.load_icon('icon/down.png'),
+            command=self.f_move_down)
+        button_move_down.pack(side=tk.TOP, padx=5, pady=5)
 
 
 def open_gui(path):
     root = tk.Tk()
     root.geometry("640x480")
-    app = StitchGui(path) #NOQA
+    app = StitchGui(root, path) #NOQA
     root.mainloop()

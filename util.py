@@ -1,3 +1,7 @@
+from PIL import Image, ImageTk
+from tkinter import filedialog as tk_fd
+import tkinter as tk
+
 FILES_IMG = (("Image files", ("*.jpg", "*.png")), ("All files", "*.*"))
 FILES_STITCH = (("Json file", ("*.json")), ("All files", "*.*"))
 
@@ -23,3 +27,54 @@ def input_int(prompt, imin=None, imax=None):
                 return val
         except ValueError:
             print("Not a valid integer!")
+
+
+_icon_cache = {}
+
+
+def load_icon(name):
+    if name in _icon_cache:
+        return _icon_cache[name]
+    img = Image.open(name)
+    imgtk = ImageTk.PhotoImage(img)
+    _icon_cache[name] = imgtk
+    return imgtk
+
+
+def get_in_filename(initialdir, title, filetypes):
+    root = tk.Tk()
+    root.withdraw()
+    value = None
+    # while value is None or value == "" or value == ():
+    value = tk_fd.askopenfilename(
+        initialdir=initialdir,
+        title=title,
+        filetypes=filetypes)
+    root.destroy()
+    return value
+
+
+def get_out_filename(initialdir, title, filetypes):
+    root = tk.Tk()
+    root.withdraw()
+    value = None
+    # while value is None or value == "" or value == ():
+    value = tk_fd.asksaveasfilename(
+        initialdir=initialdir,
+        title=title,
+        filetypes=filetypes)
+    root.destroy()
+    return value
+
+
+def get_many_files(initialdir, title, filetypes):
+    root = tk.Tk()
+    root.withdraw()
+    value = None
+    # while value is None or len(value) == 0:
+    value = tk_fd.askopenfilenames(
+        initialdir=initialdir,
+        title=title,
+        filetypes=filetypes)
+    root.destroy()
+    return value
