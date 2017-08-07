@@ -27,9 +27,6 @@ class NewStitchFile(tk.Toplevel):
         """
         Ok button is pressed
         """
-        if self.outfile.get() == "":
-            mbox.showerror("Error", "No output file specified")
-            return
         if len(self.texfiles) == 0:
             result = mbox.askquestion(
                 "Question",
