@@ -41,7 +41,7 @@ class NewStitchFile(tk.Toplevel):
             result = mbox.askquestion(
                 "Question",
                 "No input files were specified.\n" +
-                "Are you sure you wishs to continue?")
+                "Are you sure you wish to continue?")
             if result == "no":
                 return
         self.ok = True

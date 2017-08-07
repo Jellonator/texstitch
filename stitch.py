@@ -27,11 +27,17 @@ class StitchData:
     output = ""
     path = ""
 
+    def get_img_width(self):
+        return self.width * self.tex_width
+
+    def get_img_height(self):
+        return self.tex_height * math.ceil(len(self.texlist) / self.width)
+
     def get_stitched_image(self):
         outwidth = self.width * self.tex_width
         outheight = self.tex_height * math.ceil(len(self.texlist) / self.width)
         # Create image
-        image = Image.new('RGBA', (outwidth, outheight), (0, 0, 0, 0))
+        image = Image.new('RGBA', (outwidth, outheight), (0, 0, 0, 255))
         x = 0
         y = 0
         for fname in self.texlist:
@@ -58,14 +64,18 @@ class StitchData:
     def get_dir(self):
         return os.path.dirname(self.path)
 
-    def export_to_json(self):
+    def export_to_json(self, fname=None):
         '''
         Export this StitchData to a json file
 
         fname - name of file to export to
+
+        Returns True if could not save
         '''
-        if self.path == "":
-            return False
+        if fname is None:
+            fname = self.path
+        if fname == "":
+            return True
         path = self.get_dir()
         data = {
             "width": self.width,
@@ -74,9 +84,9 @@ class StitchData:
             "files": [os.path.relpath(name, path) for name in self.texlist],
             "out": os.path.relpath(self.output, path)
         }
-        with open(self.path, 'w') as fh:
+        with open(fname, 'w') as fh:
             fh.write(json.dumps(data, indent=4, sort_keys=True))
-        return True
+        return False
 
     def import_from_json(fname):
         '''
