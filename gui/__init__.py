@@ -8,6 +8,37 @@ from PIL import Image, ImageTk, ImageDraw
 
 from gui import newstitchfile
 
+ZOOM_STAGES = [0.125, 0.25, 0.5, 1, 2, 4, 8]
+
+BASE_ZOOM = ZOOM_STAGES.index(1)
+
+IMAGE_MODE_STITCHED = 1
+IMAGE_MODE_WHOLE = 2
+
+WHITE = (255, 255, 255, 255)
+BLACK = (0, 0, 0, 255)
+
+
+def create_selection_box(width, height):
+    s = max(5, int(width*0.2), int(height*0.2))
+    leny = min(height//2, s)
+    lenx = min(width//2, s)
+    x1 = 1
+    x2 = 1 + lenx
+    x3 = width - 1 - lenx
+    x4 = width - 1
+    y1 = 1
+    y2 = 1 + leny
+    y3 = height - 1 - leny
+    y4 = height - 1
+    image = Image.new('RGBA', (width, height), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    draw.line(((x1, y2), (x1, y1), (x2, y1)), fill=WHITE)
+    draw.line(((x4, y2), (x4, y1), (x3, y1)), fill=BLACK)
+    draw.line(((x1, y3), (x1, y4), (x2, y4)), fill=BLACK)
+    draw.line(((x4, y3), (x4, y4), (x3, y4)), fill=WHITE)
+    return ImageTk.PhotoImage(image)
+
 
 class StitchGui(ttk.Frame):
     data = None
@@ -17,20 +48,53 @@ class StitchGui(ttk.Frame):
     select_index = 0
     image_full = None
     image_select = None
+    elements_to_gray = None
+    image_mode = None
+    canvas = None
+    zoom = BASE_ZOOM
 
     def __init__(self, root, default_path):
         super().__init__(root)
         self.default_path = default_path
+        self.elements_to_gray = []
+        self.image_mode = tk.IntVar()
+        self.image_mode.set(IMAGE_MODE_STITCHED)
         self.f_init_ui()
 
-    def mark_data_updated(self):
-        self.updated = True
+    def reset_canvas(self):
+        for child in self.mainframe.winfo_children():
+            child.destroy()
+        self.canvas = None
+        self.refresh_data_panel()
 
-    def need_to_save(self):
-        return self.data is not None and self.updated
+    def set_data(self, data):
+        """
+        Set the data to a new value, resetting certain variables in the process
+        """
+        self.data = data
+        self.image_full = None
+        self.image_select = None
+        self.updated = False
+        self.img = None
+        self.select_index = -1
+        self.image_mode.set(IMAGE_MODE_STITCHED)
+        self.zoom = BASE_ZOOM
+        state = tk.NORMAL
+        if data is None:
+            state = tk.DISABLED
+        for e in self.elements_to_gray:
+            if isinstance(e, tuple):
+                menu, name = e
+                menu.entryconfig(name, state=state)
+            else:
+                e.config(state=state)
+        self.reset_canvas()
 
     def set_select_index(self, canvas, value):
-        print(value)
+        """
+        Set the selection index
+        Updates the given canvas
+        """
         self.select_index = value
         canvas.delete("all")
         ix = value % self.data.width
@@ -40,13 +104,21 @@ class StitchGui(ttk.Frame):
         img = self.image_full
         canvas.create_image(img.width()/2, img.height()/2, image=img)
         sel = self.image_select
-        canvas.create_image(sel.width()/2+x, sel.height()/2+y, image=sel)
+        zoom = ZOOM_STAGES[self.zoom]
+        canvas.create_image(sel.width()/2+x*zoom, sel.height()/2+y*zoom,
+                            image=sel)
 
     def bind_select_index(self, event):
+        """
+        Binding of an event to a canvas to make canvas selectable
+        """
         w = self.data.get_img_width()
         h = self.data.get_img_height()
         x = event.x
         y = event.y
+        zoom = ZOOM_STAGES[self.zoom]
+        x = x / zoom
+        y = y / zoom
         if x < 0 or y < 0 or x >= w or y >= h:
             return
         ix = x // self.data.tex_width
@@ -57,30 +129,56 @@ class StitchGui(ttk.Frame):
         self.set_select_index(event.widget, i)
 
     def refresh_data_panel(self):
-        for child in self.mainframe.winfo_children():
-            child.destroy()
+        """
+        Refresh the currently displayed image
+        """
         if self.data is None:
+            for child in self.mainframe.winfo_children():
+                child.destroy()
+            self.canvas = None
             return
         w = self.data.tex_width
         h = self.data.tex_height
         # Create image
-        self.img = self.data.get_stitched_image()
+        if self.image_mode.get() == IMAGE_MODE_STITCHED:
+            self.img = self.data.get_stitched_image()
+        elif self.image_mode.get() == IMAGE_MODE_WHOLE:
+            self.img = self.data.get_packed_image()
+        else:
+            mbox.showerror("Error", "Unknown image mode")
+            return
+        if self.img is None:
+            emsg = "Could not open image"
+            if self.image_mode.get() == IMAGE_MODE_STITCHED:
+                emsg += "\nMake sure that all of this image's textures exist"
+            else:
+                emsg += "\nMake sure that this image's output exists"
+            mbox.showerror("Error", emsg)
+            return
+        zoom = ZOOM_STAGES[self.zoom]
+        mode = Image.NEAREST
+        if zoom < 1:
+            mode = Image.BICUBIC
+        size = (int(zoom*self.img.width), int(zoom*self.img.height))
+        self.img = self.img.transform(
+            size, Image.EXTENT, (0, 0, self.img.width, self.img.height), mode)
         tkimg = ImageTk.PhotoImage(self.img)
         self.image_full = tkimg
         # Create selection image
-        image_select = Image.new('RGBA', (w, h), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(image_select)
-        draw.rectangle([(0, 0), (w-1, h-1)],
-                       fill=(255, 255, 255, 50),
-                       outline=(0, 0, 0, 50))
-        self.image_select = ImageTk.PhotoImage(image_select)
-
-        canvas = tk.Canvas(self.mainframe,
-                           width=self.data.get_img_width(),
-                           height=self.data.get_img_height())
-        canvas.pack(side=tk.TOP)
-        canvas.bind("<Button-1>", self.bind_select_index)
-        self.set_select_index(canvas, self.select_index)
+        # image_select = Image.new('RGBA', (zoom*w, zoom*h), (0, 0, 0, 0))
+        # draw = ImageDraw.Draw(image_select)
+        # draw.rectangle([(0, 0), (zoom*w-1, zoom*h-1)],
+        #                fill=(255, 255, 255, 50),
+        #                outline=(0, 0, 0, 50))
+        # self.image_select = ImageTk.PhotoImage(image_select)
+        self.image_select = create_selection_box(zoom*w, zoom*h)
+        # Create canvas
+        if self.canvas is None:
+            self.canvas = tk.Canvas(
+                self.mainframe, width=size[0], height=size[1])
+        self.canvas.pack(side=tk.TOP)
+        self.canvas.bind("<Button-1>", self.bind_select_index)
+        self.set_select_index(self.canvas, self.select_index)
 
     def check_save(self, should_alert=False):
         """
@@ -120,13 +218,15 @@ class StitchGui(ttk.Frame):
         return False
 
     def f_stitch_new(self):
+        """
+        Create a new stitch file through a dialog
+        """
         if self.check_save(should_alert=True):
             return
         data = newstitchfile.create_new_file(self.master, self.default_path)
         if data is not None:
-            self.data = data
+            self.set_data(data)
             self.updated = True
-            self.refresh_data_panel()
 
     def f_stitch_save_as(self):
         """
@@ -168,8 +268,7 @@ class StitchGui(ttk.Frame):
         if fname == () or fname == "":
             return
         else:
-            self.data = stitch.StitchData.import_from_json(fname)
-            self.refresh_data_panel()
+            self.set_data(stitch.StitchData.import_from_json(fname))
 
     def f_stitch_close(self):
         """
@@ -179,17 +278,20 @@ class StitchGui(ttk.Frame):
             mbox.showinfo("Information", "No data to close")
         if self.check_save(should_alert=True):
             return
-        self.data = None
-        self.updated = False
-        self.img = None
-        self.refresh_data_panel()
+        self.set_data(None)
 
     def f_quit(self):
+        """
+        Quit application
+        """
         if self.check_save(should_alert=True):
             return
         self.master.destroy()
 
     def f_remove_current(self):
+        """
+        Remove currently selected texture
+        """
         i = self.select_index
         if self.data is None:
             mbox.showinfo("Information", "No data is currently opened")
@@ -202,11 +304,15 @@ class StitchGui(ttk.Frame):
                               "Please select a texture to remove")
             return
         del self.data.texlist[i]
+        self.updated = True
         if i >= len(self.data.texlist) and i > 0:
             self.select_index -= 1
         self.refresh_data_panel()
 
     def f_add_texture(self):
+        """
+        Add a new texture to end of image
+        """
         if self.data is None:
             mbox.showinfo("Information",
                           "No data opened, can't add texture.")
@@ -217,31 +323,55 @@ class StitchGui(ttk.Frame):
             filetypes=util.FILES_IMG)
         for name in fnames:
             self.data.texlist.append(name)
-        self.refresh_data_panel()
-
-    def f_import_pieces(self):
-        if self.data is None:
-            mbox.showinfo("Information",
-                          "No data opened, can't import images.")
-        self.refresh_data_panel()
-
-    def f_import_whole(self):
-        if self.data is None:
-            mbox.showinfo("Information",
-                          "No data opened, can't import image.")
+        self.updated = True
         self.refresh_data_panel()
 
     def f_export_pieces(self):
+        """
+        Export pieces of image
+        """
         if self.data is None:
             mbox.showinfo("Information",
                           "No data opened, can't export images.")
+            return
+        image = self.data.get_packed_image()
+        x = 0
+        y = 0
+        # Unpack into multiple textures
+        for fname in self.data.texlist:
+            part = Image.open(fname).convert("RGBA")
+            cx = x*self.data.tex_width
+            cy = y*self.data.tex_height
+            cw = part.width
+            ch = part.height
+            croparea = (cx, cy, min(cx+cw, image.width),
+                        min(cy+ch, image.height))
+            cropped = image.crop(croparea)
+            part.paste(cropped, (1, 0))
+            part.paste(cropped, (0, 0))
+            part.save(fname)
+            x += 1
+            if x >= self.data.width:
+                x = 0
+                y += 1
 
     def f_export_whole(self):
+        """
+        Export whole of image
+        """
         if self.data is None:
             mbox.showinfo("Information",
                           "No data opened, can't export image.")
+            return
+        # Create image
+        image = self.data.get_stitched_image()
+        # Save image
+        image.save(self.data.output)
 
     def f_move_tile_to(self, ifrom, ito):
+        """
+        Move a tile from ifrom to ito
+        """
         if self.data is None:
             return
         if ifrom == ito:
@@ -252,47 +382,80 @@ class StitchGui(ttk.Frame):
             return
         self.data.texlist[ifrom], self.data.texlist[ito] =\
             self.data.texlist[ito], self.data.texlist[ifrom]
-        print(ifrom, ito)
         self.select_index = ito
+        self.updated = True
         self.refresh_data_panel()
 
     def f_move_up(self, event=None):
+        """
+        Move selection up
+        """
         if self.data is None:
             return
         self.f_move_tile_to(self.select_index,
                             self.select_index-self.data.width)
 
     def f_move_down(self, event=None):
+        """
+        Move selection down
+        """
         if self.data is None:
             return
         self.f_move_tile_to(self.select_index,
                             self.select_index+self.data.width)
 
     def f_move_left(self, event=None):
+        """
+        Move selection left
+        """
         if self.data is None:
             return
         self.f_move_tile_to(self.select_index, self.select_index-1)
 
     def f_move_right(self, event=None):
+        """
+        Move selection right
+        """
         if self.data is None:
             return
         self.f_move_tile_to(self.select_index, self.select_index+1)
 
+    def f_zoom_in(self):
+        """
+        Zoom in a little
+        """
+        if self.zoom + 1 >= len(ZOOM_STAGES):
+            return
+        self.zoom += 1
+        self.reset_canvas()
+
+    def f_zoom_out(self):
+        """
+        Zoom out a little
+        """
+        if self.zoom - 1 < 0:
+            return
+        self.zoom -= 1
+        self.reset_canvas()
+
     def f_init_ui(self):
+        """
+        Create entire UI
+        """
         self.style = ttk.Style()
         self.style.theme_use("default")
-        self.master.title("Simple")
+        self.master.title("Stitch Editor")
         self.pack(fill=tk.BOTH, expand=True)
-
+        # Left frame with buttons
         buttonframe = ttk.Frame(self, relief=tk.RAISED, borderwidth=1)
         buttonframe.pack(fill=tk.Y, side=tk.LEFT)
-
+        # Top frame with options
+        optionframe = ttk.Frame(self, relief=tk.RAISED, borderwidth=1)
+        optionframe.pack(fill=tk.X, side=tk.TOP)
+        # Centermost frame
         mainframe = ttk.Frame(self, relief=tk.RAISED, borderwidth=1)
         mainframe.pack(fill=tk.BOTH, side=tk.LEFT)
         self.mainframe = mainframe
-
-        # self.pack(fill=tk.BOTH, expand=1)
-
         # Create menu
         menu_root = tk.Menu(self.master)
         self.master.config(menu=menu_root)
@@ -305,13 +468,6 @@ class StitchGui(ttk.Frame):
         menu_file.add_command(label="Close", command=self.f_stitch_close)
         menu_file.add_command(label="Exit", command=self.f_quit)
         menu_root.add_cascade(label="File", menu=menu_file)
-        # Import menu
-        menu_import = tk.Menu(menu_root, tearoff=0)
-        menu_import.add_command(label="Import Textures",
-                                command=self.f_import_pieces)
-        menu_import.add_command(label="Import Whole",
-                                command=self.f_import_whole)
-        menu_root.add_cascade(label="Import", menu=menu_import)
         # Export menu
         menu_export = tk.Menu(menu_root, tearoff=0)
         menu_export.add_command(label="Export Textures",
@@ -319,6 +475,17 @@ class StitchGui(ttk.Frame):
         menu_export.add_command(label="Export Whole",
                                 command=self.f_export_whole)
         menu_root.add_cascade(label="Export", menu=menu_export)
+        # Radio buttons
+        radio_stitched = tk.Radiobutton(optionframe, text="Stitched",
+                                        variable=self.image_mode,
+                                        value=IMAGE_MODE_STITCHED,
+                                        command=self.refresh_data_panel)
+        radio_stitched.pack(side=tk.LEFT, padx=5, pady=5)
+        radio_whole = tk.Radiobutton(optionframe, text="Packed",
+                                     variable=self.image_mode,
+                                     value=IMAGE_MODE_WHOLE,
+                                     command=self.refresh_data_panel)
+        radio_whole.pack(side=tk.LEFT, padx=5, pady=5)
         # Up/Down buttons
         button_move_up = ttk.Button(
             buttonframe,
@@ -350,10 +517,41 @@ class StitchGui(ttk.Frame):
             image=util.load_icon('icon/remove.png'),
             command=self.f_remove_current)
         button_remove.pack(side=tk.TOP, padx=5, pady=5)
+        button_zoom_in = ttk.Button(
+            buttonframe,
+            image=util.load_icon('icon/zoom_in.png'),
+            command=self.f_zoom_in)
+        button_zoom_in.pack(side=tk.TOP, padx=5, pady=5)
+        button_zoom_out = ttk.Button(
+            buttonframe,
+            image=util.load_icon('icon/zoom_out.png'),
+            command=self.f_zoom_out)
+        button_zoom_out.pack(side=tk.TOP, padx=5, pady=5)
+        # Bind keys
         self.master.bind("<Left>", self.f_move_left)
         self.master.bind("<Up>", self.f_move_up)
         self.master.bind("<Right>", self.f_move_right)
         self.master.bind("<Down>", self.f_move_down)
+        # Gray out elements
+        self.elements_to_gray.append(button_move_up)
+        self.elements_to_gray.append(button_move_left)
+        self.elements_to_gray.append(button_move_right)
+        self.elements_to_gray.append(button_move_down)
+        self.elements_to_gray.append(button_add)
+        self.elements_to_gray.append(button_remove)
+        self.elements_to_gray.append(button_zoom_in)
+        self.elements_to_gray.append(button_zoom_out)
+        self.elements_to_gray.append(radio_whole)
+        self.elements_to_gray.append(radio_stitched)
+        self.elements_to_gray.append((menu_file, "Save"))
+        self.elements_to_gray.append((menu_file, "Save As"))
+        self.elements_to_gray.append((menu_file, "Close"))
+        self.elements_to_gray.append((menu_export, "Export Textures"))
+        self.elements_to_gray.append((menu_export, "Export Whole"))
+        # Set data
+        self.set_data(None)
+        # Override quit button
+        self.master.protocol('WM_DELETE_WINDOW', self.f_quit)
 
 
 def open_gui(path):
