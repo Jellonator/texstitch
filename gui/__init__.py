@@ -368,6 +368,26 @@ class StitchGui(ttk.Frame):
         # Save image
         image.save(self.data.output)
 
+    def f_export_whole_as(self):
+        """
+        Export whole of image
+        """
+        if self.data is None:
+            mbox.showinfo("Information",
+                          "No data opened, can't export image.")
+            return
+        fname = util.get_out_filename(
+            initialdir=self.default_path,
+            title="Output image",
+            filetypes=util.FILES_IMG)
+        if fname == () or fname == "":
+            mbox.showerror("Error", "Could not export.")
+            return
+        # Create image
+        image = self.data.get_stitched_image()
+        # Save image
+        image.save(fname)
+
     def f_move_tile_to(self, ifrom, ito):
         """
         Move a tile from ifrom to ito
@@ -474,6 +494,8 @@ class StitchGui(ttk.Frame):
                                 command=self.f_export_pieces)
         menu_export.add_command(label="Export Whole",
                                 command=self.f_export_whole)
+        menu_export.add_command(label="Export Whole As",
+                                command=self.f_export_whole_as)
         menu_root.add_cascade(label="Export", menu=menu_export)
         # Radio buttons
         radio_stitched = tk.Radiobutton(optionframe, text="Stitched",
@@ -548,6 +570,7 @@ class StitchGui(ttk.Frame):
         self.elements_to_gray.append((menu_file, "Close"))
         self.elements_to_gray.append((menu_export, "Export Textures"))
         self.elements_to_gray.append((menu_export, "Export Whole"))
+        self.elements_to_gray.append((menu_export, "Export Whole As"))
         # Set data
         self.set_data(None)
         # Override quit button
