@@ -1,4 +1,4 @@
-# import os
+import os
 import util
 import stitch
 import tkinter as tk
@@ -11,9 +11,6 @@ from gui import newstitchfile
 ZOOM_STAGES = [0.125, 0.25, 0.5, 1, 2, 4, 8]
 
 BASE_ZOOM = ZOOM_STAGES.index(1)
-
-IMAGE_MODE_STITCHED = 1
-IMAGE_MODE_WHOLE = 2
 
 WHITE = (255, 255, 255, 255)
 BLACK = (0, 0, 0, 255)
@@ -49,7 +46,6 @@ class StitchGui(ttk.Frame):
     image_full = None
     image_select = None
     elements_to_gray = None
-    image_mode = None
     canvas = None
     zoom = BASE_ZOOM
 
@@ -57,9 +53,12 @@ class StitchGui(ttk.Frame):
         super().__init__(root)
         self.default_path = default_path
         self.elements_to_gray = []
-        self.image_mode = tk.IntVar()
-        self.image_mode.set(IMAGE_MODE_STITCHED)
         self.f_init_ui()
+
+    def get_default_path(self):
+        if self.data is None or self.data.path == "":
+            return self.default_path
+        return os.path.dirname(self.data.path)
 
     def reset_canvas(self):
         for child in self.mainframe.winfo_children():
@@ -77,7 +76,6 @@ class StitchGui(ttk.Frame):
         self.updated = False
         self.img = None
         self.select_index = -1
-        self.image_mode.set(IMAGE_MODE_STITCHED)
         self.zoom = BASE_ZOOM
         state = tk.NORMAL
         if data is None:
@@ -140,21 +138,7 @@ class StitchGui(ttk.Frame):
         w = self.data.tex_width
         h = self.data.tex_height
         # Create image
-        if self.image_mode.get() == IMAGE_MODE_STITCHED:
-            self.img = self.data.get_stitched_image()
-        elif self.image_mode.get() == IMAGE_MODE_WHOLE:
-            self.img = self.data.get_packed_image()
-        else:
-            mbox.showerror("Error", "Unknown image mode")
-            return
-        if self.img is None:
-            emsg = "Could not open image"
-            if self.image_mode.get() == IMAGE_MODE_STITCHED:
-                emsg += "\nMake sure that all of this image's textures exist"
-            else:
-                emsg += "\nMake sure that this image's output exists"
-            mbox.showerror("Error", emsg)
-            return
+        self.img = self.data.get_stitched_image()
         zoom = ZOOM_STAGES[self.zoom]
         mode = Image.NEAREST
         if zoom < 1:
@@ -165,12 +149,6 @@ class StitchGui(ttk.Frame):
         tkimg = ImageTk.PhotoImage(self.img)
         self.image_full = tkimg
         # Create selection image
-        # image_select = Image.new('RGBA', (zoom*w, zoom*h), (0, 0, 0, 0))
-        # draw = ImageDraw.Draw(image_select)
-        # draw.rectangle([(0, 0), (zoom*w-1, zoom*h-1)],
-        #                fill=(255, 255, 255, 50),
-        #                outline=(0, 0, 0, 50))
-        # self.image_select = ImageTk.PhotoImage(image_select)
         self.image_select = create_selection_box(zoom*w, zoom*h)
         # Create canvas
         if self.canvas is None:
@@ -209,7 +187,7 @@ class StitchGui(ttk.Frame):
         """
         if self.data.path == "":
             fname = util.get_out_filename(
-                initialdir=self.default_path,
+                initialdir=self.get_default_path(),
                 title="Json data save path",
                 filetypes=util.FILES_STITCH)
             if fname is None or fname == () or fname == "":
@@ -235,7 +213,7 @@ class StitchGui(ttk.Frame):
         if self.data is None:
             mbox.showinfo("Information", "No data to save.")
         fname = util.get_out_filename(
-            initialdir=self.default_path,
+            initialdir=self.get_default_path(),
             title="Json data save path",
             filetypes=util.FILES_STITCH)
         if fname == () or fname == "":
@@ -318,7 +296,7 @@ class StitchGui(ttk.Frame):
                           "No data opened, can't add texture.")
             return
         fnames = util.get_many_files(
-            initialdir=self.default_path,
+            initialdir=self.get_default_path(),
             title="Select textures",
             filetypes=util.FILES_IMG)
         for name in fnames:
@@ -326,34 +304,21 @@ class StitchGui(ttk.Frame):
         self.updated = True
         self.refresh_data_panel()
 
-    def f_export_pieces(self):
+    def f_import_whole(self):
         """
-        Export pieces of image
+        Import an image to use as pieces
         """
         if self.data is None:
             mbox.showinfo("Information",
-                          "No data opened, can't export images.")
+                          "No data opened, can't export image.")
             return
-        image = self.data.get_packed_image()
-        x = 0
-        y = 0
-        # Unpack into multiple textures
-        for fname in self.data.texlist:
-            part = Image.open(fname).convert("RGBA")
-            cx = x*self.data.tex_width
-            cy = y*self.data.tex_height
-            cw = part.width
-            ch = part.height
-            croparea = (cx, cy, min(cx+cw, image.width),
-                        min(cy+ch, image.height))
-            cropped = image.crop(croparea)
-            part.paste(cropped, (1, 0))
-            part.paste(cropped, (0, 0))
-            part.save(fname)
-            x += 1
-            if x >= self.data.width:
-                x = 0
-                y += 1
+        fname = util.get_in_filename(
+            initialdir=self.get_default_path(),
+            title="Input image",
+            filetypes=util.FILES_IMG)
+        image = Image.open(fname).convert("RGBA")
+        self.data.unpack_image(image)
+        self.refresh_data_panel()
 
     def f_export_whole(self):
         """
@@ -363,21 +328,8 @@ class StitchGui(ttk.Frame):
             mbox.showinfo("Information",
                           "No data opened, can't export image.")
             return
-        # Create image
-        image = self.data.get_stitched_image()
-        # Save image
-        image.save(self.data.output)
-
-    def f_export_whole_as(self):
-        """
-        Export whole of image
-        """
-        if self.data is None:
-            mbox.showinfo("Information",
-                          "No data opened, can't export image.")
-            return
         fname = util.get_out_filename(
-            initialdir=self.default_path,
+            initialdir=self.get_default_path(),
             title="Output image",
             filetypes=util.FILES_IMG)
         if fname == () or fname == "":
@@ -470,8 +422,8 @@ class StitchGui(ttk.Frame):
         buttonframe = ttk.Frame(self, relief=tk.RAISED, borderwidth=1)
         buttonframe.pack(fill=tk.Y, side=tk.LEFT)
         # Top frame with options
-        optionframe = ttk.Frame(self, relief=tk.RAISED, borderwidth=1)
-        optionframe.pack(fill=tk.X, side=tk.TOP)
+        # optionframe = ttk.Frame(self, relief=tk.RAISED, borderwidth=1)
+        # optionframe.pack(fill=tk.X, side=tk.TOP)
         # Centermost frame
         mainframe = ttk.Frame(self, relief=tk.RAISED, borderwidth=1)
         mainframe.pack(fill=tk.BOTH, side=tk.LEFT)
@@ -488,26 +440,13 @@ class StitchGui(ttk.Frame):
         menu_file.add_command(label="Close", command=self.f_stitch_close)
         menu_file.add_command(label="Exit", command=self.f_quit)
         menu_root.add_cascade(label="File", menu=menu_file)
-        # Export menu
-        menu_export = tk.Menu(menu_root, tearoff=0)
-        menu_export.add_command(label="Export Textures",
-                                command=self.f_export_pieces)
-        menu_export.add_command(label="Export Whole",
-                                command=self.f_export_whole)
-        menu_export.add_command(label="Export Whole As",
-                                command=self.f_export_whole_as)
-        menu_root.add_cascade(label="Export", menu=menu_export)
-        # Radio buttons
-        radio_stitched = tk.Radiobutton(optionframe, text="Stitched",
-                                        variable=self.image_mode,
-                                        value=IMAGE_MODE_STITCHED,
-                                        command=self.refresh_data_panel)
-        radio_stitched.pack(side=tk.LEFT, padx=5, pady=5)
-        radio_whole = tk.Radiobutton(optionframe, text="Packed",
-                                     variable=self.image_mode,
-                                     value=IMAGE_MODE_WHOLE,
-                                     command=self.refresh_data_panel)
-        radio_whole.pack(side=tk.LEFT, padx=5, pady=5)
+        # Image menu
+        menu_image = tk.Menu(menu_root, tearoff=0)
+        menu_image.add_command(label="Import",
+                               command=self.f_import_whole)
+        menu_image.add_command(label="Export",
+                               command=self.f_export_whole)
+        menu_root.add_cascade(label="Image", menu=menu_image)
         # Up/Down buttons
         button_move_up = ttk.Button(
             buttonframe,
@@ -563,14 +502,11 @@ class StitchGui(ttk.Frame):
         self.elements_to_gray.append(button_remove)
         self.elements_to_gray.append(button_zoom_in)
         self.elements_to_gray.append(button_zoom_out)
-        self.elements_to_gray.append(radio_whole)
-        self.elements_to_gray.append(radio_stitched)
         self.elements_to_gray.append((menu_file, "Save"))
         self.elements_to_gray.append((menu_file, "Save As"))
         self.elements_to_gray.append((menu_file, "Close"))
-        self.elements_to_gray.append((menu_export, "Export Textures"))
-        self.elements_to_gray.append((menu_export, "Export Whole"))
-        self.elements_to_gray.append((menu_export, "Export Whole As"))
+        self.elements_to_gray.append((menu_image, "Export"))
+        self.elements_to_gray.append((menu_image, "Import"))
         # Set data
         self.set_data(None)
         # Override quit button

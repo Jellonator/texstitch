@@ -2,9 +2,6 @@ import util
 import stitch
 import tkinter as tk
 from tkinter import messagebox as mbox
-# from tkinter import filedialog as tk_fd
-# from tkinter import ttk
-# from tkinter import messagebox as mbox
 
 
 class NewStitchFile(tk.Toplevel):
@@ -12,6 +9,9 @@ class NewStitchFile(tk.Toplevel):
     default_path = ""
 
     def select_images(self):
+        """
+        Pick textures
+        """
         file_path_list = util.get_many_files(
             filetypes=util.FILES_IMG,
             initialdir=self.default_path,
@@ -23,17 +23,10 @@ class NewStitchFile(tk.Toplevel):
             self.text_infiles.insert(tk.END, name+'\n')
         self.text_infiles.config(state=tk.DISABLED)
 
-    def select_output(self):
-        out_name = util.get_out_filename(
-            initialdir=self.default_path,
-            title="Output image name",
-            filetypes=util.FILES_IMG)
-        if out_name != () and out_name != "":
-            self.entry_outfile.delete(0, tk.END)
-            self.entry_outfile.insert(0, out_name)
-            self.outfile.set(out_name)
-
     def accept_ok(self):
+        """
+        Ok button is pressed
+        """
         if self.outfile.get() == "":
             mbox.showerror("Error", "No output file specified")
             return
@@ -48,6 +41,9 @@ class NewStitchFile(tk.Toplevel):
         self.destroy()
 
     def accept_cancel(self):
+        """
+        Cancel button is pressed
+        """
         self.ok = False
         self.destroy()
 
@@ -58,20 +54,17 @@ class NewStitchFile(tk.Toplevel):
         self.width = tk.IntVar()
         self.tex_width = tk.IntVar()
         self.tex_height = tk.IntVar()
-        self.outfile = tk.StringVar()
         self.geometry("480x320")
         self.default_path = default_path
         # Create frames
         frame_width = tk.Frame(self, relief=tk.RAISED)
         frame_tex_width = tk.Frame(self, relief=tk.RAISED)
         frame_tex_height = tk.Frame(self, relief=tk.RAISED)
-        frame_output_select = tk.Frame(self, relief=tk.RAISED)
         frame_image_select = tk.Frame(self, relief=tk.RAISED)
         frame_buttons = tk.Frame(self, relief=tk.RAISED)
         frame_width.pack(fill=tk.X, padx=5, pady=5)
         frame_tex_width.pack(fill=tk.X, padx=5, pady=5)
         frame_tex_height.pack(fill=tk.X, padx=5, pady=5)
-        frame_output_select.pack(fill=tk.X, padx=5, pady=5)
         frame_buttons.pack(fill=tk.X, padx=5, pady=5, side=tk.BOTTOM)
         frame_image_select.pack(fill=tk.BOTH, padx=5, pady=5, expand=tk.TRUE)
         # Spinboxes
@@ -94,18 +87,6 @@ class NewStitchFile(tk.Toplevel):
         label_width.pack(side=tk.RIGHT)
         label_tex_width.pack(side=tk.RIGHT)
         label_tex_height.pack(side=tk.RIGHT)
-        # Outfile
-        button_outfile = tk.Button(
-            frame_output_select,
-            image=util.load_icon('icon/open.png'),
-            command=self.select_output)
-        button_outfile.pack(side=tk.RIGHT)
-        entry_outfile = tk.Entry(frame_output_select, text="",
-                                 textvariable=self.outfile)
-        entry_outfile.pack(side=tk.RIGHT)
-        label_outfile = tk.Label(frame_output_select, text="Output Image")
-        label_outfile.pack(side=tk.RIGHT)
-        self.entry_outfile = entry_outfile
         # Infiles
         label_infiles = tk.Label(frame_image_select, text="Input images")
         label_infiles.pack(side=tk.TOP, anchor=tk.E)
@@ -122,7 +103,6 @@ class NewStitchFile(tk.Toplevel):
         text_infiles_scroll.pack(side=tk.RIGHT, anchor=tk.N, fill=tk.Y)
         text_infiles.pack(side=tk.RIGHT, anchor=tk.N,
                           fill=tk.BOTH, expand=tk.YES)
-
         self.text_infiles = text_infiles
         # Accept buttons
         button_ok = tk.Button(
@@ -135,7 +115,6 @@ class NewStitchFile(tk.Toplevel):
             command=self.accept_cancel)
         button_ok.pack(side=tk.RIGHT)
         button_cancel.pack(side=tk.RIGHT)
-
         # Make sure parent window is inactive
         self.transient(parent)
         self.grab_set()
@@ -144,7 +123,6 @@ class NewStitchFile(tk.Toplevel):
 
 def create_new_file(root, default_path):
     f = NewStitchFile(root, default_path)
-    # print(f.width.get())
     if not f.ok:
         return None
     data = stitch.StitchData()
@@ -152,6 +130,5 @@ def create_new_file(root, default_path):
     data.texlist = [x for x in f.texfiles]
     data.tex_width = f.tex_width.get()
     data.tex_height = f.tex_height.get()
-    data.output = f.outfile.get()
 
     return data

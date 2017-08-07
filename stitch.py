@@ -24,7 +24,6 @@ class StitchData:
     tex_width = 1
     tex_height = 1
     texlist = []
-    output = ""
     path = ""
 
     def get_img_width(self):
@@ -44,7 +43,7 @@ class StitchData:
             try:
                 part = Image.open(fname).convert("RGBA")
             except IOError:
-                return None
+                pass
             part = part.crop((0, 0, self.tex_width, self.tex_height))
             ox = x * self.tex_width
             oy = y * self.tex_height
@@ -55,11 +54,26 @@ class StitchData:
                 y += 1
         return image
 
-    def get_packed_image(self):
-        try:
-            return Image.open(self.output).convert("RGBA")
-        except IOError:
-            return None
+    def unpack_image(self, image):
+        x = 0
+        y = 0
+        # Unpack into multiple textures
+        for fname in self.texlist:
+            part = Image.open(fname).convert("RGBA")
+            cx = x*self.tex_width
+            cy = y*self.tex_height
+            cw = part.width
+            ch = part.height
+            croparea = (cx, cy, min(cx+cw, image.width),
+                        min(cy+ch, image.height))
+            cropped = image.crop(croparea)
+            part.paste(cropped, (1, 0))
+            part.paste(cropped, (0, 0))
+            part.save(fname)
+            x += 1
+            if x >= self.width:
+                x = 0
+                y += 1
 
     def get_dir(self):
         return os.path.dirname(self.path)
@@ -82,7 +96,6 @@ class StitchData:
             "tex_width": self.tex_width,
             "tex_height": self.tex_height,
             "files": [os.path.relpath(name, path) for name in self.texlist],
-            "out": os.path.relpath(self.output, path)
         }
         with open(fname, 'w') as fh:
             fh.write(json.dumps(data, indent=4, sort_keys=True))
@@ -106,7 +119,6 @@ class StitchData:
                 os.path.abspath(os.path.join(path, name))
                 for name in jdata["files"]
             ]
-            sdata.output = os.path.abspath(os.path.join(path, jdata["out"]))
         return sdata
 
 
@@ -149,10 +161,6 @@ def stitch_new(path, args, pickf=pick_files_individual):
     # Create data
     data = StitchData()
     data.path = os.path.abspath(outfile)
-    data.output = util.get_out_filename(
-        initialdir=path,
-        title="Output should be saved as:",
-        filetypes=util.FILES_IMG)
     # Get files
     pickf(data, path)
     # Output
@@ -165,7 +173,7 @@ def stitch_pack(path, args):
     Use a StitchData json file to pack multiple textures into a single image
     '''
     # Figure out paths
-    if len(args) != 1:
+    if len(args) != 2:
         print("Invalid arguments")
         sys.exit()
     datafile = os.path.join(path, args[0])
@@ -175,7 +183,7 @@ def stitch_pack(path, args):
     # Create image
     image = data.get_stitched_image()
     # Save image
-    image.save(data.output)
+    image.save(args[1])
     print("Finished packing.")
 
 
@@ -184,30 +192,12 @@ def stitch_unpack(path, args):
     Use a StitchData json file to unpack an image into multiple textures
     '''
     # Figure out paths
-    if len(args) != 1:
+    if len(args) != 2:
         print("Invalid arguments")
         sys.exit()
     datafile = os.path.join(path, args[0])
     path = os.path.dirname(datafile)
     # Get data
     data = StitchData.import_from_json(datafile)
-    image = data.get_packed_image()
-    x = 0
-    y = 0
-    # Unpack into multiple textures
-    for fname in data.texlist:
-        part = Image.open(fname).convert("RGBA")
-        cx = x*data.tex_width
-        cy = y*data.tex_height
-        cw = part.width
-        ch = part.height
-        croparea = (cx, cy, min(cx+cw, image.width), min(cy+ch, image.height))
-        cropped = image.crop(croparea)
-        part.paste(cropped, (1, 0))
-        part.paste(cropped, (0, 0))
-        part.save(fname)
-        x += 1
-        if x >= data.width:
-            x = 0
-            y += 1
+    data.unpack_image(Image.open(args[1]).convert("RGBA"))
     print("Finished unpacking")

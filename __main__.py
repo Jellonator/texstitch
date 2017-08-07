@@ -10,11 +10,21 @@ This is a Texture stitching program.
 It's useful for Nintendo 64 repaints.
 
 Commands:
-stitch new {filename}       Create a new stitch file by manually picking files
-stitch newseam {filename}   Create a new stitch file by matching seams
-stitch gui {filename}       Open this program's GUI
-stitch pack {filename}      Pack multiple images into a single image
-stitch unpack {filename}    Unpack a stitched image into multiple images
+stitch gui
+Open the Stitch Editor GUI
+
+stitch new {filename}
+Create a new stitch file by manually picking files.
+
+stitch newseam {filename}
+Create a new stitch file by automatically matching
+seams.
+
+stitch pack {filename} {imagename}
+Pack a stitch project's textures into a single image.
+
+stitch unpack {filename} {imagename}
+Split an image into multiple textures as defined by a stitch project.
 
 Auto stitch creation requires the given textures to have matching edges.
 Any textures given to auto that aren't in the output image will be moved to a
