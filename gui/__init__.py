@@ -1,6 +1,7 @@
 import os
 import util
 import stitch
+import shutil
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox as mbox
@@ -467,6 +468,21 @@ class StitchGui(ttk.Frame):
         if dataconfig.config_data(self.master, self.data):
             self.reset_canvas()
 
+    def f_move_textures(self):
+        if self.data is None:
+            return
+        folder = util.get_directory(
+            self.get_default_path(),
+            "Choose folder for output folder")
+        if folder == "" or folder == ():
+            return
+        for i in range(len(self.data.texlist)):
+            fname = self.data.texlist[i]
+            base = os.path.basename(fname)
+            newname = os.path.join(folder, base)
+            shutil.move(fname, newname)
+            self.data.texlist[i] = newname
+
     def f_init_ui(self):
         """
         Create entire UI
@@ -501,6 +517,8 @@ class StitchGui(ttk.Frame):
         # Edit menu
         menu_edit = tk.Menu(menu_root, tearoff=0)
         menu_edit.add_command(label="Configure Image", command=self.f_config)
+        menu_edit.add_command(label="Move Textures",
+                              command=self.f_move_textures)
         menu_root.add_cascade(label="Edit", menu=menu_edit)
         # Image menu
         menu_image = tk.Menu(menu_root, tearoff=0)
@@ -570,6 +588,7 @@ class StitchGui(ttk.Frame):
         self.elements_to_gray.append((menu_image, "Export"))
         self.elements_to_gray.append((menu_image, "Import"))
         self.elements_to_gray.append((menu_edit, "Configure Image"))
+        self.elements_to_gray.append((menu_edit, "Move Textures"))
         # Set data
         self.set_data(None)
         # Override quit button
