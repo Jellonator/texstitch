@@ -8,6 +8,7 @@ from PIL import Image, ImageTk, ImageDraw
 
 from gui import newstitchfile
 from gui import newautostitch
+from gui import dataconfig
 
 ZOOM_STAGES = [0.125, 0.25, 0.5, 1, 2, 4, 8]
 
@@ -21,12 +22,12 @@ def create_selection_box(width, height):
     s = max(5, int(width*0.2), int(height*0.2))
     leny = min(height//2, s)
     lenx = min(width//2, s)
-    x1 = 1
-    x2 = 1 + lenx
+    x1 = 0
+    x2 = lenx
     x3 = width - 1 - lenx
     x4 = width - 1
-    y1 = 1
-    y2 = 1 + leny
+    y1 = 0
+    y2 = leny
     y3 = height - 1 - leny
     y4 = height - 1
     image = Image.new('RGBA', (width, height), (0, 0, 0, 0))
@@ -157,18 +158,19 @@ class StitchGui(ttk.Frame):
                 self.mainframe, width=size[0], height=size[1],
                 scrollregion=(0, 0, size[0], size[1]))
         self.canvas.bind("<Button-1>", self.bind_select_index)
-
-        # Create scrollbar
+        # Create Y scrollbar
         scroll_canvas_y = tk.Scrollbar(
             self.mainframe, orient=tk.VERTICAL, command=self.canvas.yview)
         self.canvas["yscrollcommand"] = scroll_canvas_y.set
         scroll_canvas_y.pack(side=tk.RIGHT, anchor=tk.N, fill=tk.Y)
+        # Create X scrollbar
         scroll_canvas_x = tk.Scrollbar(
             self.mainframe, orient=tk.HORIZONTAL, command=self.canvas.xview)
         self.canvas["xscrollcommand"] = scroll_canvas_x.set
         scroll_canvas_x.pack(side=tk.BOTTOM, anchor=tk.W, fill=tk.X)
+        # Pack canvas
         self.canvas.pack(side=tk.TOP)
-
+        # Draw Canvas
         self.set_select_index(self.canvas, self.select_index)
 
     def check_save(self, should_alert=False):
@@ -434,6 +436,10 @@ class StitchGui(ttk.Frame):
         self.zoom -= 1
         self.reset_canvas()
 
+    def f_config(self):
+        if dataconfig.config_data(self.master, self.data):
+            self.reset_canvas()
+
     def f_init_ui(self):
         """
         Create entire UI
@@ -465,6 +471,10 @@ class StitchGui(ttk.Frame):
         menu_file.add_command(label="Close", command=self.f_stitch_close)
         menu_file.add_command(label="Exit", command=self.f_quit)
         menu_root.add_cascade(label="File", menu=menu_file)
+        # Edit menu
+        menu_edit = tk.Menu(menu_root, tearoff=0)
+        menu_edit.add_command(label="Configure Image", command=self.f_config)
+        menu_root.add_cascade(label="Edit", menu=menu_edit)
         # Image menu
         menu_image = tk.Menu(menu_root, tearoff=0)
         menu_image.add_command(label="Import",
@@ -532,6 +542,7 @@ class StitchGui(ttk.Frame):
         self.elements_to_gray.append((menu_file, "Close"))
         self.elements_to_gray.append((menu_image, "Export"))
         self.elements_to_gray.append((menu_image, "Import"))
+        self.elements_to_gray.append((menu_edit, "Configure Image"))
         # Set data
         self.set_data(None)
         # Override quit button
