@@ -49,6 +49,8 @@ class StitchGui(ttk.Frame):
     image_select = None
     elements_to_gray = None
     canvas = None
+    xscroll = None
+    yscroll = None
     zoom = BASE_ZOOM
 
     def __init__(self, root, default_path):
@@ -114,11 +116,13 @@ class StitchGui(ttk.Frame):
         """
         w = self.data.get_img_width()
         h = self.data.get_img_height()
+        ox = self.xscroll.get()[0]*w
+        oy = self.yscroll.get()[0]*h
         x = event.x
         y = event.y
         zoom = ZOOM_STAGES[self.zoom]
-        x = x / zoom
-        y = y / zoom
+        x = (x / zoom) + ox
+        y = (y / zoom) + oy
         if x < 0 or y < 0 or x >= w or y >= h:
             return
         ix = x // self.data.tex_width
@@ -157,19 +161,22 @@ class StitchGui(ttk.Frame):
             self.canvas = tk.Canvas(
                 self.mainframe, width=size[0], height=size[1],
                 scrollregion=(0, 0, size[0], size[1]))
-        self.canvas.bind("<Button-1>", self.bind_select_index)
-        # Create Y scrollbar
-        scroll_canvas_y = tk.Scrollbar(
-            self.mainframe, orient=tk.VERTICAL, command=self.canvas.yview)
-        self.canvas["yscrollcommand"] = scroll_canvas_y.set
-        scroll_canvas_y.pack(side=tk.RIGHT, anchor=tk.N, fill=tk.Y)
-        # Create X scrollbar
-        scroll_canvas_x = tk.Scrollbar(
-            self.mainframe, orient=tk.HORIZONTAL, command=self.canvas.xview)
-        self.canvas["xscrollcommand"] = scroll_canvas_x.set
-        scroll_canvas_x.pack(side=tk.BOTTOM, anchor=tk.W, fill=tk.X)
-        # Pack canvas
-        self.canvas.pack(side=tk.TOP)
+            self.canvas.bind("<Button-1>", self.bind_select_index)
+            # Create Y scrollbar
+            scroll_canvas_y = tk.Scrollbar(
+                self.mainframe, orient=tk.VERTICAL, command=self.canvas.yview)
+            self.canvas["yscrollcommand"] = scroll_canvas_y.set
+            scroll_canvas_y.pack(side=tk.RIGHT, anchor=tk.N, fill=tk.Y)
+            self.yscroll = scroll_canvas_y
+            # Create X scrollbar
+            scroll_canvas_x = tk.Scrollbar(
+                self.mainframe, orient=tk.HORIZONTAL,
+                command=self.canvas.xview)
+            self.canvas["xscrollcommand"] = scroll_canvas_x.set
+            scroll_canvas_x.pack(side=tk.BOTTOM, anchor=tk.W, fill=tk.X)
+            self.xscroll = scroll_canvas_x
+            # Pack canvas
+            self.canvas.pack(side=tk.TOP)
         # Draw Canvas
         self.set_select_index(self.canvas, self.select_index)
 
@@ -246,7 +253,11 @@ class StitchGui(ttk.Frame):
             mbox.showerror("Error", "Could not save.")
             return
         self.data.path = fname
-        self.data.export_to_json()
+        if self.data.export_to_json():
+            return True
+        else:
+            self.updated = False
+            return False
 
     def f_stitch_save(self):
         """
@@ -257,7 +268,11 @@ class StitchGui(ttk.Frame):
             mbox.showinfo("Information", "No data to save.")
         if self.check_data_path():
             return True
-        return self.data.export_to_json()
+        if self.data.export_to_json():
+            return True
+        else:
+            self.updated = False
+            return False
 
     def f_stitch_open(self):
         """

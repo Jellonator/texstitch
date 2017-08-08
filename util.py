@@ -1,9 +1,12 @@
 from PIL import Image, ImageTk
 from tkinter import filedialog as tk_fd
 import tkinter as tk
+import os
 
 FILES_IMG = (("Image files", ("*.jpg", "*.png")), ("All files", "*.*"))
 FILES_STITCH = (("Json file", ("*.json")), ("All files", "*.*"))
+
+data_path = None
 
 
 def input_int(prompt, imin=None, imax=None):
@@ -33,6 +36,8 @@ _icon_cache = {}
 
 
 def load_icon(name):
+    if data_path is not None and data_path != "":
+        name = os.path.join(data_path, name)
     if name in _icon_cache:
         return _icon_cache[name]
     img = Image.open(name)

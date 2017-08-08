@@ -4,6 +4,7 @@ import sys
 import os
 import seams
 import gui
+import util
 
 HELP_STRING = """
 This is a Texture stitching program.
@@ -40,6 +41,7 @@ def stitch_help():
 
 
 def main(args):
+    util.data_path = os.path.dirname(args[0])
     base_path = os.getcwd()
     if len(args) < 2:
         # stitch_help()
