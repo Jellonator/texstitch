@@ -67,6 +67,18 @@ def get_out_filename(initialdir, title, filetypes):
     return value
 
 
+def get_directory(initialdir, title):
+    root = tk.Tk()
+    root.withdraw()
+    value = None
+    # while value is None or value == "" or value == ():
+    value = tk_fd.askdirectory(
+        initialdir=initialdir,
+        title=title)
+    root.destroy()
+    return value
+
+
 def get_many_files(initialdir, title, filetypes):
     root = tk.Tk()
     root.withdraw()

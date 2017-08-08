@@ -160,7 +160,7 @@ def move_unused_nodes(imgnodes, target):
             shutil.move(n.fname, outname)
 
 
-def put_nodes_into_data(imgnodes, data, path):
+def put_nodes_into_data(imgnodes, data):
     # Get topleft node
     base_node = next(iter(imgnodes.values())).get_topleft()
     node = base_node
@@ -178,8 +178,7 @@ def put_nodes_into_data(imgnodes, data, path):
                       .format(width, i+1))
                 sys.exit()
             xnode.used = True
-            file_path = os.path.relpath(xnode.fname, path)
-            data.texlist.append(file_path)
+            data.texlist.append(xnode.fname)
             xnode = xnode.right
         if xnode is not None and xnode != first_xnode:
             print("Error: Width mismatch, expected {}, got {}"
@@ -206,6 +205,6 @@ def pick_files_auto(data, path):
     for name in file_path_list:
         imgnodes[name] = ImageNode(name)
     compare_image_nodes(imgnodes)
-    put_nodes_into_data(imgnodes, data, path)
+    put_nodes_into_data(imgnodes, data)
     # Move unused textures into 'unused_textures' folder
     move_unused_nodes(imgnodes, os.path.join(path, 'unused_textures'))

@@ -7,6 +7,7 @@ from tkinter import messagebox as mbox
 from PIL import Image, ImageTk, ImageDraw
 
 from gui import newstitchfile
+from gui import newautostitch
 
 ZOOM_STAGES = [0.125, 0.25, 0.5, 1, 2, 4, 8]
 
@@ -149,13 +150,25 @@ class StitchGui(ttk.Frame):
         tkimg = ImageTk.PhotoImage(self.img)
         self.image_full = tkimg
         # Create selection image
-        self.image_select = create_selection_box(zoom*w, zoom*h)
+        self.image_select = create_selection_box(int(zoom*w), int(zoom*h))
         # Create canvas
         if self.canvas is None:
             self.canvas = tk.Canvas(
-                self.mainframe, width=size[0], height=size[1])
-        self.canvas.pack(side=tk.TOP)
+                self.mainframe, width=size[0], height=size[1],
+                scrollregion=(0, 0, size[0], size[1]))
         self.canvas.bind("<Button-1>", self.bind_select_index)
+
+        # Create scrollbar
+        scroll_canvas_y = tk.Scrollbar(
+            self.mainframe, orient=tk.VERTICAL, command=self.canvas.yview)
+        self.canvas["yscrollcommand"] = scroll_canvas_y.set
+        scroll_canvas_y.pack(side=tk.RIGHT, anchor=tk.N, fill=tk.Y)
+        scroll_canvas_x = tk.Scrollbar(
+            self.mainframe, orient=tk.HORIZONTAL, command=self.canvas.xview)
+        self.canvas["xscrollcommand"] = scroll_canvas_x.set
+        scroll_canvas_x.pack(side=tk.BOTTOM, anchor=tk.W, fill=tk.X)
+        self.canvas.pack(side=tk.TOP)
+
         self.set_select_index(self.canvas, self.select_index)
 
     def check_save(self, should_alert=False):
@@ -202,6 +215,17 @@ class StitchGui(ttk.Frame):
         if self.check_save(should_alert=True):
             return
         data = newstitchfile.create_new_file(self.master, self.default_path)
+        if data is not None:
+            self.set_data(data)
+            self.updated = True
+
+    def f_stitch_new_auto(self):
+        """
+        Create a new stitch file through a dialog
+        """
+        if self.check_save(should_alert=True):
+            return
+        data = newautostitch.auto_new_file(self.master, self.default_path)
         if data is not None:
             self.set_data(data)
             self.updated = True
@@ -420,13 +444,13 @@ class StitchGui(ttk.Frame):
         self.pack(fill=tk.BOTH, expand=True)
         # Left frame with buttons
         buttonframe = ttk.Frame(self, relief=tk.RAISED, borderwidth=1)
-        buttonframe.pack(fill=tk.Y, side=tk.LEFT)
+        buttonframe.pack(fill=tk.Y, side=tk.LEFT, ipady=2, ipadx=2)
         # Top frame with options
         # optionframe = ttk.Frame(self, relief=tk.RAISED, borderwidth=1)
         # optionframe.pack(fill=tk.X, side=tk.TOP)
         # Centermost frame
         mainframe = ttk.Frame(self, relief=tk.RAISED, borderwidth=1)
-        mainframe.pack(fill=tk.BOTH, side=tk.LEFT)
+        mainframe.pack(side=tk.LEFT, anchor=tk.N+tk.W)
         self.mainframe = mainframe
         # Create menu
         menu_root = tk.Menu(self.master)
@@ -434,6 +458,7 @@ class StitchGui(ttk.Frame):
         # File menu
         menu_file = tk.Menu(menu_root, tearoff=0)
         menu_file.add_command(label="New", command=self.f_stitch_new)
+        menu_file.add_command(label="New Auto", command=self.f_stitch_new_auto)
         menu_file.add_command(label="Save", command=self.f_stitch_save)
         menu_file.add_command(label="Save As", command=self.f_stitch_save_as)
         menu_file.add_command(label="Open", command=self.f_stitch_open)
