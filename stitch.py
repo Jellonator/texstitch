@@ -23,8 +23,11 @@ class StitchData:
     width = 1
     tex_width = 1
     tex_height = 1
-    texlist = []
+    texlist = None
     path = ""
+
+    def __init__(self):
+        self.texlist = []
 
     def get_img_width(self):
         return self.width * self.tex_width
