@@ -17,6 +17,8 @@ BASE_ZOOM = ZOOM_STAGES.index(1)
 WHITE = (255, 255, 255, 255)
 BLACK = (0, 0, 0, 255)
 
+EDITOR_NAME = "Stitch Editor"
+
 
 def create_selection_box(width, height):
     s = max(5, int(width*0.2), int(height*0.2))
@@ -83,7 +85,13 @@ class StitchGui(ttk.Frame):
         self.zoom = BASE_ZOOM
         state = tk.NORMAL
         if data is None:
+            self.master.title(EDITOR_NAME)
             state = tk.DISABLED
+        else:
+            name = os.path.basename(data.path)
+            if name == "":
+                name = "untitled project"
+            self.master.title(EDITOR_NAME + " - " + name)
         for e in self.elements_to_gray:
             if isinstance(e, tuple):
                 menu, name = e
@@ -215,6 +223,7 @@ class StitchGui(ttk.Frame):
             if fname is None or fname == () or fname == "":
                 return True
             self.data.path = fname
+            self.master.title(EDITOR_NAME + " - " + os.path.basename(fname))
         return False
 
     def f_stitch_new(self):
@@ -253,7 +262,9 @@ class StitchGui(ttk.Frame):
             mbox.showerror("Error", "Could not save.")
             return
         self.data.path = fname
+        self.master.title(EDITOR_NAME + " - " + os.path.basename(fname))
         if self.data.export_to_json():
+            mbox.showerror("Error", "Could not save.")
             return True
         else:
             self.updated = False
@@ -269,6 +280,7 @@ class StitchGui(ttk.Frame):
         if self.check_data_path():
             return True
         if self.data.export_to_json():
+            mbox.showerror("Error", "Could not save.")
             return True
         else:
             self.updated = False
