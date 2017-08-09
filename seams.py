@@ -176,14 +176,14 @@ def put_nodes_into_data(imgnodes, data):
             if xnode is None or (xnode == first_xnode and i != 0):
                 print("Error: Width mismatch, expected {}, got {}"
                       .format(width, i+1))
-                sys.exit()
+                # sys.exit()
             xnode.used = True
             data.texlist.append(xnode.fname)
             xnode = xnode.right
         if xnode is not None and xnode != first_xnode:
             print("Error: Width mismatch, expected {}, got {}"
                   .format(width, width+1))
-            sys.exit()
+            # sys.exit()
         node = node.bottom
 
 

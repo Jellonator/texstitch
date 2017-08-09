@@ -10,6 +10,7 @@ from PIL import Image, ImageTk, ImageDraw
 from gui import newstitchfile
 from gui import newautostitch
 from gui import dataconfig
+from gui import importtex
 
 ZOOM_STAGES = [0.125, 0.25, 0.5, 1, 2, 4, 8]
 
@@ -339,7 +340,7 @@ class StitchGui(ttk.Frame):
         self.updated = True
         if i >= len(self.data.texlist) and i > 0:
             self.select_index -= 1
-        self.refresh_data_panel()
+        self.reset_canvas()
 
     def f_add_texture(self):
         """
@@ -356,7 +357,7 @@ class StitchGui(ttk.Frame):
         for name in fnames:
             self.data.texlist.append(name)
         self.updated = True
-        self.refresh_data_panel()
+        self.reset_canvas()
 
     def f_import_whole(self):
         """
@@ -482,6 +483,15 @@ class StitchGui(ttk.Frame):
             newname = os.path.join(folder, base)
             shutil.move(fname, newname)
             self.data.texlist[i] = newname
+        self.updated = True
+
+    def f_import_textures(self):
+        if self.data is None:
+            return
+        path = self.get_default_path()
+        if importtex.import_tex(self.master, self.data, path):
+            self.reset_canvas()
+            self.updated = True
 
     def f_init_ui(self):
         """
@@ -519,6 +529,8 @@ class StitchGui(ttk.Frame):
         menu_edit.add_command(label="Configure Image", command=self.f_config)
         menu_edit.add_command(label="Move Textures",
                               command=self.f_move_textures)
+        menu_edit.add_command(label="Import Textures",
+                              command=self.f_import_textures)
         menu_root.add_cascade(label="Edit", menu=menu_edit)
         # Image menu
         menu_image = tk.Menu(menu_root, tearoff=0)
@@ -589,6 +601,7 @@ class StitchGui(ttk.Frame):
         self.elements_to_gray.append((menu_image, "Import"))
         self.elements_to_gray.append((menu_edit, "Configure Image"))
         self.elements_to_gray.append((menu_edit, "Move Textures"))
+        self.elements_to_gray.append((menu_edit, "Import Textures"))
         # Set data
         self.set_data(None)
         # Override quit button
